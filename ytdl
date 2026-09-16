@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ~/bin/ytdl のようなシンボリックリンク経由で呼ばれても実体のディレクトリを解決する。
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  LINK_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$LINK_DIR/$SOURCE"
+done
+DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+
+if [ ! -d "$DIR/.venv" ]; then
+  echo "初回セットアップが未実行です。" >&2
+  echo "「セットアップ.command」を実行してください（Finder で右クリック→「開く」）。" >&2
+  echo "手動でやる場合:" >&2
+  echo "  cd $DIR && python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt" >&2
+  exit 2
+fi
+
+source "$DIR/.venv/bin/activate"
+cd "$DIR"
+exec python -m src.cli "$@"

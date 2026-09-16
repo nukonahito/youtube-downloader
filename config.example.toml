@@ -1,0 +1,30 @@
+# youtube-downloader 設定ファイルのサンプル。
+# セットアップ時にこのファイルが config.toml としてコピーされる
+# （config.toml は各自の保存先設定が入るため配布物には含まれない）。
+# CLI フラグ / 環境変数 YTDL_OUTPUT_DIR はここより優先される。
+
+[output]
+# 外付けドライブ（HDD/SSD）に保存したい場合だけ設定する。
+# 未接続時は fallback_dir へ自動的に切り替わる（処理は止めない）。
+# 例（Mac）: external_drive = "/Volumes/MyDrive/YouTube"
+# 例（Windows）: external_drive = "D:/YouTube"
+external_drive = ""
+
+# 保存先。空のままなら OS 既定の動画フォルダ
+# （Mac: ~/Movies/YouTube、Windows: ~/Videos/YouTube）を使う。
+fallback_dir = ""
+
+[download]
+quality = 1080          # 480 / 720 / 1080 / 1440 / 2160 / "best"
+audio_only = false
+
+[embed]
+thumbnail = true
+chapters = true
+info_json = true
+subtitles = false        # --subs で有効化。既定言語は ja,en
+subtitle_langs = ["ja", "en"]
+
+[archive]
+enabled = true            # 再ダウンロード防止台帳。--no-archive で無効化
+filename = ".downloaded.txt"

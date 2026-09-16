@@ -1,0 +1,135 @@
+"""yt-dlp に渡すオプション dict を組み立てる純関数群。
+
+yt_dlp のインポートはしない（テストがネットワーク/バイナリ非依存になるように）。
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import Any
+
+from src.targets import Target
+
+RATE_RE = re.compile(r"^([\d.]+)\s*([KMG]?)$", re.IGNORECASE)
+_RATE_MULTIPLIERS = {"": 1, "K": 1024, "M": 1024**2, "G": 1024**3}
+
+# .60B / .100B はバイト長トリム。Windows の MAX_PATH(260) に収まるよう
+# Mac 版（.120B/.80B）より短めに揃えている（全 OS 共通のテンプレートにするため）。
+OUTTMPL_VIDEO = "%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
+OUTTMPL_SHORT = "Shorts/%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
+OUTTMPL_PLAYLIST = "%(playlist_title).60B/%(playlist_index)03d_%(title).100B [%(id)s].%(ext)s"
+
+
+def parse_rate(value: str) -> int:
+    """"5M" / "500K" / "1G" / "1024" のような文字列をバイト数に変換する。"""
+    m = RATE_RE.match(value.strip())
+    if not m:
+        raise ValueError(f"レート指定の形式が不正です（例: 5M, 500K, 1024): {value!r}")
+    num = float(m.group(1))
+    mult = _RATE_MULTIPLIERS[m.group(2).upper()]
+    return int(num * mult)
+
+
+def build_format(quality: str | int, audio_only: bool) -> str:
+    if audio_only:
+        return "bestaudio[ext=m4a]/bestaudio/best"
+    if str(quality).lower() == "best":
+        return "bv*+ba/b"
+    height = int(quality)
+    return (
+        f"bv*[height<={height}][ext=mp4]+ba[ext=m4a]"
+        f"/bv*[height<={height}]+ba"
+        f"/b[height<={height}]"
+        f"/b"
+    )
+
+
+def build_outtmpl(kind: str) -> str:
+    if kind == "playlist":
+        return OUTTMPL_PLAYLIST
+    if kind == "short":
+        return OUTTMPL_SHORT
+    return OUTTMPL_VIDEO
+
+
+def build_options(
+    target: Target,
+    output_dir: Path,
+    *,
+    quality: str | int = "1080",
+    audio_only: bool = False,
+    embed_thumbnail: bool = True,
+    embed_chapters: bool = True,
+    write_info_json: bool = True,
+    subtitle_langs: list[str] | None = None,
+    archive_path: Path | str | None = None,
+    expand_playlist: bool = False,
+    playlist_items: str | None = None,
+    cookies_from_browser: str | None = None,
+    limit_rate: int | None = None,
+    ignore_playlist_errors: bool = True,
+    verbose: bool = False,
+    ffmpeg_location: Path | str | None = None,
+) -> dict[str, Any]:
+    """1 件の Target について yt_dlp.YoutubeDL に渡す opts dict を作る。"""
+    opts: dict[str, Any] = {
+        "format": build_format(quality, audio_only),
+        "outtmpl": {"default": str(Path(output_dir) / build_outtmpl(target.kind))},
+        "writethumbnail": embed_thumbnail,
+        "writeinfojson": write_info_json,
+        "retries": 10,
+        "fragment_retries": 10,
+        "concurrent_fragment_downloads": 4,
+        "continuedl": True,
+        "live_from_start": target.kind == "live",
+        "quiet": not verbose,
+        "no_warnings": not verbose,
+        # ファイル名から Windows で禁止された文字（\ / : * ? " < > |）を除去する。
+        # 全 OS で常時有効にすることで、外付けドライブが exFAT でも安全にする。
+        "windowsfilenames": True,
+    }
+
+    if ffmpeg_location:
+        # ディレクトリではなくバイナリのフルパスを渡す。yt-dlp 側がこれを見て
+        # 兄弟の ffprobe / ffprobe.exe を拡張子込みで正しく解決する。
+        opts["ffmpeg_location"] = str(ffmpeg_location)
+
+    if not audio_only:
+        opts["merge_output_format"] = "mp4"
+
+    if target.kind in {"video", "short", "live"}:
+        # list= 付きの watch URL でも既定では単一動画のみ（--playlist で反転）。
+        opts["noplaylist"] = not expand_playlist
+
+    if target.kind in {"playlist", "channel"}:
+        opts["ignoreerrors"] = "only_download" if ignore_playlist_errors else False
+
+    if playlist_items:
+        opts["playlist_items"] = playlist_items
+
+    if archive_path:
+        opts["download_archive"] = str(archive_path)
+
+    if cookies_from_browser:
+        opts["cookiesfrombrowser"] = (cookies_from_browser,)
+
+    if limit_rate:
+        opts["ratelimit"] = limit_rate
+
+    if subtitle_langs:
+        opts["writesubtitles"] = True
+        opts["writeautomaticsub"] = True
+        opts["subtitleslangs"] = list(subtitle_langs)
+
+    postprocessors: list[dict[str, Any]] = []
+    if audio_only:
+        postprocessors.append({"key": "FFmpegExtractAudio", "preferredcodec": "m4a"})
+    if embed_chapters:
+        postprocessors.append({"key": "FFmpegMetadata", "add_chapters": True, "add_metadata": True})
+    if embed_thumbnail:
+        postprocessors.append({"key": "EmbedThumbnail"})
+    if subtitle_langs:
+        postprocessors.append({"key": "FFmpegEmbedSubtitle"})
+    opts["postprocessors"] = postprocessors
+
+    return opts

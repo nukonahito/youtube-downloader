@@ -1,0 +1,16 @@
+.venv/
+downloads/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.egg-info/
+dist/
+
+# 個人用のローカル設定（保存先パスなどが入るため配布物には含めない）。
+# セットアップ時に config.example.toml からコピーして作る。
+config.toml
+
+# 作者用の私的メモ（アカウント情報・リリース手順など）。
+NOTES.private.md
+

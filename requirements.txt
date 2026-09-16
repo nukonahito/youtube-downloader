@@ -1,0 +1,10 @@
+# YouTube 側の変更で頻繁に壊れるため上限は固定しない。
+# 動作しなくなったら `./ytdl --update` (= pip install -U yt-dlp) で追従する。
+yt-dlp>=2025.9
+# --audio-only 時のサムネイル埋め込み(EmbedThumbnail)用。
+# 無いと ffmpeg 直接埋め込みにフォールバックし、m4a への埋め込みが
+# 環境によって "Conversion failed" で失敗することがある。
+mutagen>=1.47
+# tomllib は Python 3.11 で標準入り。3.10 を使う場合のみこちらを使う。
+tomli>=2.0; python_version < "3.11"
+pytest>=8.0

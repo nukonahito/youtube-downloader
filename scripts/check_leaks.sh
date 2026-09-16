@@ -46,11 +46,28 @@ STATIC_PATTERNS=(
   '/Volumes/[^/[:space:]"]+'
   '/home/[^/[:space:]"]+'
   '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
-  'KIOXIA'
 )
 
+# 上記パターンの「形」は README・config.example.toml・テスト・このスクリプト自身の
+# 正規表現定義の中に、意図的なプレースホルダ例（MyDrive・YOUR-DRIVE-NAME・FAKE 等）
+# として登場する。これらは実際の個人情報ではないため静的スキャンの対象から除外する。
+# 実際の値が漏れた場合は、上の動的パターン（実行時の $HOME・git identity・hostname）
+# がファイルの場所を問わず検出する。
+STATIC_SCAN_EXCLUDE=(
+  "check_leaks.sh"
+  "make_release.sh"
+  "README.md"
+  "config.example.toml"
+  "config.py"
+  "test_config.py"
+)
+EXCLUDE_ARGS=()
+for name in "${STATIC_SCAN_EXCLUDE[@]}"; do
+  EXCLUDE_ARGS+=(--exclude="$name")
+done
+
 for pat in "${STATIC_PATTERNS[@]}"; do
-  hits="$(grep -rIlE -- "$pat" "$TARGET" 2>/dev/null | grep -v '/\.git/')"
+  hits="$(grep -rIlE "${EXCLUDE_ARGS[@]}" -- "$pat" "$TARGET" 2>/dev/null | grep -v '/\.git/')"
   if [ -n "$hits" ]; then
     echo "[NG] 構造パターン一致: $pat"
     echo "$hits" | sed 's/^/       /'

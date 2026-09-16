@@ -22,7 +22,16 @@ git archive --format=zip --prefix=youtube-downloader/ HEAD -o "$ZIP_PATH"
 
 echo
 echo "== 展開して検査 =="
-unzip -q "$ZIP_PATH" -d "$WORK_DIR"
+# macOS 標準の unzip コマンドは git archive が付与する UTF-8 ファイル名フラグを
+# 正しく解釈できず、日本語ファイル名が文字化けして展開に失敗することがある
+# （Finder や Explorer の実際の展開処理とは無関係な、このコマンド固有の不具合）。
+# zip 仕様に厳密に従う Python の zipfile で展開することで、実際の配布物の
+# 内容を正しく検証する。
+python3 -c "
+import sys, zipfile
+with zipfile.ZipFile(sys.argv[1]) as zf:
+    zf.extractall(sys.argv[2])
+" "$ZIP_PATH" "$WORK_DIR"
 
 FAIL=0
 

@@ -69,10 +69,13 @@ def build_format(quality: str | int, audio_only: bool) -> str:
     )
 
 
-def build_outtmpl(kind: str) -> str:
-    if kind == "playlist":
+def build_outtmpl(target: Target) -> str:
+    if target.kind == "playlist":
         return OUTTMPL_PLAYLIST
-    if kind == "short":
+    # --tab shorts で解決したチャンネルURL（.../shorts）は kind="channel" のまま
+    # （ignoreerrors を維持するため kind は変えない）だが、保存先は単体ショート
+    # と同じ Shorts/ 配下に揃える。
+    if target.kind == "short" or target.url.rstrip("/").endswith("/shorts"):
         return OUTTMPL_SHORT
     return OUTTMPL_VIDEO
 
@@ -100,7 +103,7 @@ def build_options(
     """1 件の Target について yt_dlp.YoutubeDL に渡す opts dict を作る。"""
     opts: dict[str, Any] = {
         "format": build_format(quality, audio_only),
-        "outtmpl": {"default": str(Path(output_dir) / build_outtmpl(target.kind))},
+        "outtmpl": {"default": str(Path(output_dir) / build_outtmpl(target))},
         "writethumbnail": embed_thumbnail,
         "writeinfojson": write_info_json,
         "retries": 10,

@@ -127,6 +127,17 @@ class TestBuildOptions:
         assert opts["outtmpl"]["default"].startswith("/tmp/out/%(uploader)")
         assert "/Shorts/" in opts["outtmpl"]["default"]
 
+    def test_channel_shorts_tab_uses_shorts_outtmpl(self):
+        t = Target(url="https://www.youtube.com/@Yunagi_Yosuga/shorts", kind="channel", label="@Yunagi_Yosuga")
+        opts = build_options(t, Path("/tmp/out"))
+        assert opts["outtmpl"]["default"].startswith("/tmp/out/%(uploader)")
+        assert "/Shorts/" in opts["outtmpl"]["default"]
+
+    def test_channel_videos_tab_uses_video_outtmpl(self):
+        t = Target(url="https://www.youtube.com/@Yunagi_Yosuga/videos", kind="channel", label="@Yunagi_Yosuga")
+        opts = build_options(t, Path("/tmp/out"))
+        assert "/Shorts/" not in opts["outtmpl"]["default"]
+
     def test_playlist_outtmpl_has_playlist_index(self):
         t = Target(url="https://www.youtube.com/playlist?list=PLxxx", kind="playlist", label="PLxxx")
         opts = build_options(t, Path("/tmp/out"))

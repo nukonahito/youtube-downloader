@@ -21,11 +21,11 @@ class _CaptureLogger:
 
     def __init__(self, verbose: bool) -> None:
         self.verbose = verbose
-        self.skipped = False
+        self.skipped_count = 0
 
     def _check(self, msg: str) -> None:
         if ARCHIVE_SKIP_MARKER in msg:
-            self.skipped = True
+            self.skipped_count += 1
 
     def debug(self, msg: str) -> None:
         self._check(msg)
@@ -47,9 +47,26 @@ class _CaptureLogger:
 
 
 def download_one(target: Target, opts: dict[str, Any], *, verbose: bool = False) -> Result:
-    """1 件をダウンロードし、結果を Result で返す（例外は投げない）。"""
+    """1 件をダウンロードし、結果を Result で返す（例外は投げない）。
+
+    playlist/channel は 1 回の download() 呼び出しの中で何十〜何百件も処理されうる。
+    アーカイブ済みスキップが1件でも混ざると全体を "skipped" と誤報しないよう、
+    progress_hooks で実際にダウンロードされた件数を別途数える。
+    """
     logger = _CaptureLogger(verbose)
-    ydl_opts = {**opts, "logger": logger}
+    downloaded_ids: set[str] = set()
+
+    def _on_progress(d: dict[str, Any]) -> None:
+        if d.get("status") == "finished":
+            vid = d.get("info_dict", {}).get("id")
+            if vid:
+                downloaded_ids.add(vid)
+
+    ydl_opts = {
+        **opts,
+        "logger": logger,
+        "progress_hooks": [*opts.get("progress_hooks", []), _on_progress],
+    }
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([target.url])
@@ -58,7 +75,15 @@ def download_one(target: Target, opts: dict[str, Any], *, verbose: bool = False)
     except Exception as e:  # noqa: BLE001 - CLI境界で全て捕捉しサマリに載せる
         return Result(target.label, "error", f"{type(e).__name__}: {e}")
 
-    if logger.skipped:
+    if downloaded_ids:
+        if logger.skipped_count:
+            return Result(
+                target.label,
+                "ok",
+                f"完了（新規 {len(downloaded_ids)}件 / 既存スキップ {logger.skipped_count}件）",
+            )
+        return Result(target.label, "ok", "完了")
+    if logger.skipped_count:
         return Result(target.label, "skipped", "既にダウンロード済み（アーカイブ台帳）")
     return Result(target.label, "ok", "完了")
 

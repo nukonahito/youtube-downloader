@@ -63,9 +63,14 @@ def download_one(target: Target, opts: dict[str, Any], *, verbose: bool = False)
     return Result(target.label, "ok", "完了")
 
 
-def list_formats(target: Target, *, verbose: bool = False) -> Result:
-    """フォーマット一覧を stdout に表示するだけで、ダウンロードは行わない。"""
-    ydl_opts: dict[str, Any] = {"listformats": True, "quiet": not verbose}
+def list_formats(target: Target, opts: dict[str, Any], *, verbose: bool = False) -> Result:
+    """フォーマット一覧を stdout に表示するだけで、ダウンロードは行わない。
+
+    cookies / playlist_items 等を download_one と同じ opts で受け取る
+    （以前は listformats 専用の最小 opts を自前で組んでおり、
+    --cookies-from-browser や --items が無視されていた）。
+    """
+    ydl_opts = {**opts, "listformats": True, "quiet": not verbose}
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([target.url])

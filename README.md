@@ -93,7 +93,8 @@ Windows では `ytdl` の代わりに `ytdl.bat`（または単に `ytdl`）を�
 | `--tab {videos,shorts,live,all}` | チャンネル指定時に見るタブ（既定: videos） |
 | `--subs [ja,en]` | 字幕を取得して埋め込む（既定OFF。値省略時は `ja,en`） |
 | `--no-thumbnail` / `--no-chapters` / `--no-info-json` / `--no-archive` | 各埋め込み・台帳を無効化 |
-| `--cookies-from-browser chrome` | メンバー限定・年齢制限動画向け |
+| `--cookies-from-browser chrome` | メンバー限定・年齢制限動画向け（このマシンのブラウザから読む） |
+| `--cookies FILE` | Netscape形式のcookieファイルを直接指定（別端末で取得した場合など。`--cookies-from-browser` と排他） |
 | `--limit-rate 5M` | 帯域制限 |
 | `-F, --list-formats` | フォーマット一覧のみ表示 |
 | `-n, --dry-run` | 実行せず解決結果とオプションだけ表示 |
@@ -162,9 +163,22 @@ pytest -q
   ダブルクリックではなく、右クリック（または Control+クリック）→「開く」を選ぶ
 - **`ffmpeg が見つかりません`**: セットアップをもう一度実行するか、
   `brew install ffmpeg`（Mac）/ `winget install ffmpeg`（Windows）を試す
-- **`No supported JavaScript runtime could be found` という警告**:
-  yt-dlp が YouTube 側の署名解読に JS ランタイムを使う場合があるという警告。
-  無視して問題なく動作することが多いが、頻発する場合は Node.js の導入を検討する
+- **`n challenge solving failed` / `The page needs to be reloaded` というエラー**:
+  yt-dlp が YouTube の JS チャレンジ（EJS）を解決できていない。
+  `requirements.txt` の `yt-dlp[default,deno]` により EJS 一式と Deno ランタイムが
+  自動導入されるので、`pip install -r requirements.txt` をやり直せば直ることが多い
+- **ダウンロードが数MB〜数十MBで止まって `HTTP Error 403: Forbidden`（特にメン限・年齢制限など
+  ログインが必要な動画）**: PO Token（Googleの不正利用対策トークン）が無いことが原因。
+  以下でトークン生成プラグインを導入する（`yt-dlp` が自動検出して使う。以後の設定は不要）:
+  ```bash
+  source .venv/bin/activate
+  pip install -U bgutil-ytdlp-pot-provider
+  cd ~ && git clone --single-branch --branch 2.0.0 \
+    https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git
+  cd ~/bgutil-ytdlp-pot-provider/server/ && npm ci && npx tsc
+  ```
+  Node.js 22以上が必要（`brew install node` 等で導入）。途中で403になった動画は
+  `.part` ファイル（保存先に残る同名+`.part`）を削除してから再実行する
 - **急にダウンロードが失敗するようになった**: YouTube 側の仕様変更が原因のことが多い。
   `ytdl --update` で yt-dlp を最新化する
 - **`--audio-only` でサムネイル埋め込みが失敗する**:

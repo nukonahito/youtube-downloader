@@ -14,3 +14,6 @@ config.toml
 # 作者用の私的メモ（アカウント情報・リリース手順など）。
 NOTES.private.md
 
+# 実行のたびに上書きされる作業ログ。
+.download_run.log
+

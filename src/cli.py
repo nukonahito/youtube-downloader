@@ -38,7 +38,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-chapters", action="store_true", help="チャプター埋め込みを無効化")
     parser.add_argument("--no-info-json", action="store_true", help="メタデータJSON書き出しを無効化")
     parser.add_argument("--no-archive", action="store_true", help="再ダウンロード防止台帳を無効化")
-    parser.add_argument("--cookies-from-browser", metavar="BROWSER", help="例: chrome, safari, firefox（メン限・年齢制限動画向け）")
+    cookies_group = parser.add_mutually_exclusive_group()
+    cookies_group.add_argument(
+        "--cookies-from-browser",
+        metavar="BROWSER[:PROFILE]",
+        help="例: chrome, brave, safari, firefox（メン限・年齢制限動画向け）。"
+        '複数プロファイルがある場合は brave:"Profile 1" のように指定する',
+    )
+    cookies_group.add_argument("--cookies", metavar="FILE", help="Netscape形式のcookieファイルを直接指定（別端末で取得した場合など）")
     parser.add_argument("--limit-rate", metavar="RATE", help="例: 5M, 500K")
     parser.add_argument("-F", "--list-formats", action="store_true", help="フォーマット一覧のみ表示して終了")
     parser.add_argument("-n", "--dry-run", action="store_true", help="解決後のURL・保存先・オプションを表示して終了")
@@ -235,6 +242,7 @@ def main(argv: list[str] | None = None) -> int:
             expand_playlist=args.expand_playlist,
             playlist_items=args.items,
             cookies_from_browser=args.cookies_from_browser,
+            cookies_file=args.cookies,
             limit_rate=limit_rate,
             verbose=args.verbose,
             ffmpeg_location=ffmpeg_path,
@@ -255,7 +263,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.list_formats:
         for i, t in enumerate(resolved, 1):
             print(f"[{i}/{total}] {t.label} ({t.kind})")
-            results.append(downloader.list_formats(t, verbose=args.verbose))
+            results.append(downloader.list_formats(t, build_opts(t), verbose=args.verbose))
         return _summarize(results)
 
     for i, t in enumerate(resolved, 1):

@@ -13,6 +13,28 @@ from src.targets import Target
 RATE_RE = re.compile(r"^([\d.]+)\s*([KMG]?)$", re.IGNORECASE)
 _RATE_MULTIPLIERS = {"": 1, "K": 1024, "M": 1024**2, "G": 1024**3}
 
+# yt-dlp 本体の CLI（yt_dlp/__init__.py の parse_options）が --cookies-from-browser
+# の "BROWSER[+KEYRING][:PROFILE][::CONTAINER]" 構文をタプルへ変換する処理と同一の正規表現。
+# YoutubeDL の Python API 自体はこの文字列構文を解釈しない（生のタプルを要求する）ため、
+# ここで複製しないと Profile 指定（例: "brave:Profile 1"）が黙って無視されてしまう。
+_COOKIES_FROM_BROWSER_RE = re.compile(
+    r"""(?x)
+    (?P<name>[^+:]+)
+    (?:\s*\+\s*(?P<keyring>[^:]+))?
+    (?:\s*:\s*(?!:)(?P<profile>.+?))?
+    (?:\s*::\s*(?P<container>.+))?
+    """
+)
+
+
+def parse_cookies_from_browser(spec: str) -> tuple[str, str | None, str | None, str | None]:
+    """"BROWSER[+KEYRING][:PROFILE][::CONTAINER]" を YoutubeDL 用タプルへ変換する。"""
+    mobj = _COOKIES_FROM_BROWSER_RE.fullmatch(spec)
+    if mobj is None:
+        raise ValueError(f"--cookies-from-browser の指定が不正です: {spec!r}")
+    name, keyring, profile, container = mobj.group("name", "keyring", "profile", "container")
+    return name.lower(), profile, keyring.upper() if keyring else None, container
+
 # .60B / .100B はバイト長トリム。Windows の MAX_PATH(260) に収まるよう
 # Mac 版（.120B/.80B）より短めに揃えている（全 OS 共通のテンプレートにするため）。
 OUTTMPL_VIDEO = "%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
@@ -66,6 +88,7 @@ def build_options(
     expand_playlist: bool = False,
     playlist_items: str | None = None,
     cookies_from_browser: str | None = None,
+    cookies_file: Path | str | None = None,
     limit_rate: int | None = None,
     ignore_playlist_errors: bool = True,
     verbose: bool = False,
@@ -111,7 +134,10 @@ def build_options(
         opts["download_archive"] = str(archive_path)
 
     if cookies_from_browser:
-        opts["cookiesfrombrowser"] = (cookies_from_browser,)
+        opts["cookiesfrombrowser"] = parse_cookies_from_browser(cookies_from_browser)
+
+    if cookies_file:
+        opts["cookiefile"] = str(cookies_file)
 
     if limit_rate:
         opts["ratelimit"] = limit_rate

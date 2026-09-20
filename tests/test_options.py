@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from src.options import build_format, build_options, parse_rate
+from src.options import build_format, build_options, parse_cookies_from_browser, parse_rate
 from src.targets import Target
 
 
@@ -48,6 +48,23 @@ class TestParseRate:
     def test_invalid_raises(self):
         with pytest.raises(ValueError):
             parse_rate("fast")
+
+
+class TestParseCookiesFromBrowser:
+    def test_browser_only(self):
+        assert parse_cookies_from_browser("brave") == ("brave", None, None, None)
+
+    def test_browser_with_profile(self):
+        assert parse_cookies_from_browser("brave:Profile 1") == ("brave", "Profile 1", None, None)
+
+    def test_browser_with_keyring(self):
+        assert parse_cookies_from_browser("chrome+basictext") == ("chrome", None, "BASICTEXT", None)
+
+    def test_browser_with_profile_and_container(self):
+        assert parse_cookies_from_browser("firefox:default::Meta") == ("firefox", "default", None, "Meta")
+
+    def test_uppercased_name_lowered(self):
+        assert parse_cookies_from_browser("Brave") == ("brave", None, None, None)
 
 
 class TestBuildOptions:
@@ -137,7 +154,19 @@ class TestBuildOptions:
 
     def test_cookies_from_browser(self):
         opts = build_options(video_target(), Path("/tmp/out"), cookies_from_browser="chrome")
-        assert opts["cookiesfrombrowser"] == ("chrome",)
+        assert opts["cookiesfrombrowser"] == ("chrome", None, None, None)
+
+    def test_cookies_from_browser_with_profile(self):
+        opts = build_options(video_target(), Path("/tmp/out"), cookies_from_browser="brave:Profile 1")
+        assert opts["cookiesfrombrowser"] == ("brave", "Profile 1", None, None)
+
+    def test_cookies_file(self):
+        opts = build_options(video_target(), Path("/tmp/out"), cookies_file="/tmp/cookies.txt")
+        assert opts["cookiefile"] == "/tmp/cookies.txt"
+
+    def test_no_cookies_file_when_none(self):
+        opts = build_options(video_target(), Path("/tmp/out"))
+        assert "cookiefile" not in opts
 
     def test_limit_rate(self):
         opts = build_options(video_target(), Path("/tmp/out"), limit_rate=5 * 1024 * 1024)

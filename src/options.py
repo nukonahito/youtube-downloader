@@ -39,7 +39,7 @@ def parse_cookies_from_browser(spec: str) -> tuple[str, str | None, str | None, 
 # Mac 版（.120B/.80B）より短めに揃えている（全 OS 共通のテンプレートにするため）。
 OUTTMPL_VIDEO = "%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
 OUTTMPL_SHORT = "Shorts/%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
-OUTTMPL_PLAYLIST = "%(playlist_title).60B/%(playlist_index)03d_%(title).100B [%(id)s].%(ext)s"
+OUTTMPL_PLAYLIST = "%(uploader).60B/%(playlist_title).60B/%(playlist_index)03d_%(title).100B [%(id)s].%(ext)s"
 
 
 def parse_rate(value: str) -> int:

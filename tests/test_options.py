@@ -121,10 +121,11 @@ class TestBuildOptions:
         opts = build_options(video_target(), Path("/tmp/out"), archive_path=None)
         assert "download_archive" not in opts
 
-    def test_short_outtmpl_has_shorts_prefix(self):
+    def test_short_outtmpl_nests_shorts_under_uploader(self):
         t = Target(url="https://www.youtube.com/shorts/dQw4w9WgXcQ", kind="short", label="dQw4w9WgXcQ")
         opts = build_options(t, Path("/tmp/out"))
-        assert opts["outtmpl"]["default"].startswith("/tmp/out/Shorts/")
+        assert opts["outtmpl"]["default"].startswith("/tmp/out/%(uploader)")
+        assert "/Shorts/" in opts["outtmpl"]["default"]
 
     def test_playlist_outtmpl_has_playlist_index(self):
         t = Target(url="https://www.youtube.com/playlist?list=PLxxx", kind="playlist", label="PLxxx")

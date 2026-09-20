@@ -38,8 +38,11 @@ def parse_cookies_from_browser(spec: str) -> tuple[str, str | None, str | None, 
 # .60B / .100B はバイト長トリム。Windows の MAX_PATH(260) に収まるよう
 # Mac 版（.120B/.80B）より短めに揃えている（全 OS 共通のテンプレートにするため）。
 OUTTMPL_VIDEO = "%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
-OUTTMPL_SHORT = "Shorts/%(uploader).60B/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
-OUTTMPL_PLAYLIST = "%(uploader).60B/%(playlist_title).60B/%(playlist_index)03d_%(title).100B [%(id)s].%(ext)s"
+OUTTMPL_SHORT = "%(uploader).60B/Shorts/%(upload_date>%Y-%m-%d)s_%(title).100B [%(id)s].%(ext)s"
+# playlist_uploader（プレイリストの持ち主）を使う。uploader だと動画ごとの
+# アップロード主体（コラボ・他チャンネル投稿）で変わり、同一プレイリストが
+# 複数チャンネルフォルダへ分裂してしまう。
+OUTTMPL_PLAYLIST = "%(playlist_uploader).60B/%(playlist_title).60B/%(playlist_index)03d_%(title).100B [%(id)s].%(ext)s"
 
 
 def parse_rate(value: str) -> int:
